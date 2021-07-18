@@ -1,0 +1,405 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track Candidate</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<!-- BS JavaScript -->
+<script src="~/Scripts/bootstrap.min.js"></script>
+<script src="~/Scripts/bootstrap.bundle.min.js"></script>
+
+<style type="text/css">
+    #popup {
+        display: inline-block;
+        opacity: 0;
+        position: fixed;
+        top: 20%;
+        left: 50%;
+        padding: 1em;
+        transform: translateX(-50%);
+        background: #fff;
+        border: 1px solid #888;
+        box-shadow: 1px 1px .5em 0 rgba(0, 0, 0, .5);
+        transition: opacity .3s ease-in-out;
+        z-index:91;
+    }
+
+        #popup.hidden {
+            display: none;
+        }
+
+        #popup.fade-in {
+            opacity: 1;
+        }
+</style>
+<script type="text/javascript">
+           var Url = "@System.Configuration.ConfigurationManager.AppSettings["Url"]";
+        /*---------------------------------------------------
+         * document ready function
+         * ---------------------------------------------------*/
+        $(document).ready(function () {
+            if (sessionStorage.getItem("UserName") == null) {
+                var baseUrl = "@Url.Action("Login","Home")";
+                window.location.href = baseUrl;
+            }
+            var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            var month = (new Date()).getMonth();
+            $('#ddlMonth').val(month + 1).attr("selected", "selected");
+            GetVendor();
+            GetCandidate();
+            GetWeeklyDetails();
+            $('#btnrefresh').click(function () {
+                GetWeeklyDetailsFilter();
+            });
+
+            $("#ddlVendor").change(function () {
+                GetWeeklyDetailsFilter();
+
+            });
+            $("#ddlCandidate").change(function () {
+                GetWeeklyDetailsFilter();
+
+            });
+            $("#ddlMonth").change(function () {
+                GetWeeklyDetailsFilter();
+
+            });
+            $("#ddlYear").change(function () {
+                GetWeeklyDetailsFilter();
+
+            });
+            for (i = new Date().getFullYear(); i > 2018; i--) {
+                $('#ddlYear').append($('<option />').val(i).html(i));
+            }
+        });
+        function ShowLoading() {
+            $("#overlay").show();
+            $("#divloader").fadeIn(100);
+        }
+
+        function HideLoading() {
+            $("#overlay").hide();
+            $("#divloader").fadeOut(200);
+        }
+    function GetWeeklyDetails() {
+        ShowLoading();
+            $.ajax({
+                type: "GET",
+                url: Url + "api/Dashboard/getweeklydetails",
+                dataType: "json",
+                data: "{}",
+                contentType: "application/json; charset-utf-8",
+                success: function (data, textStatus, jqXHR) {
+                    $("#tbodyWeeklyDetails").html("");
+                    for (i = 0; i < data.length; i++) {
+                        var StartDate = "";
+                        var EndDate = "";
+
+                        if (data[i].WeekStartDate != null) {
+                            StartDate = data[i].WeekStartDate.split(" ")[0].split("/")[0] + "-" + data[i].WeekStartDate.split(" ")[0].split("/")[1];
+                        }
+                        if (data[i].WeekEndDate != null) {
+                            EndDate = data[i].WeekEndDate.split(" ")[0].split("/")[0] + "-" + data[i].WeekEndDate.split(" ")[0].split("/")[1]
+                        }
+                        if (data[i].FileName != null && data[i].FileName != "Total") {
+                            $("#tbodyWeeklyDetails").append("<tr><td style='word-wrap: break-word'>" + data[i].Name + "</td><td style='word-wrap: break-word'>" + data[i].VendorName + "</td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 1 + ")'>" + data[i].ClientHoliday + "</a></td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 2 + ")'>" + data[i].PTOTaken + "</a></td><td>" + StartDate + " - " + EndDate + "</td><td>" + data[i].TotalWorkingHours + "</td><td><a class='fa'  target='_blank' style='font-size:24px;'  href='https://smtimesheet.blob.core.windows.net/timesheet/" + data[i].FileName + "'> " + "&#xf1c1;" + "</a></td></tr>");
+                        }
+
+                        else if (data[i].FileName != "Total") {
+                            $("#tbodyWeeklyDetails").append("<tr><td style='word-wrap: break-word'>" + data[i].Name + "</td><td style='word-wrap: break-word'>" + data[i].VendorName + "</td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 1 + ")'>" + data[i].ClientHoliday + "</a></td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 2 + ")'>" + data[i].PTOTaken + "</a></td><td>" + StartDate + " - " + EndDate + "</td><td>" + data[i].TotalWorkingHours + "</td><td></td></tr>");
+
+                        }
+                        else if (data[i].FileName == "Total") {
+                            $("#tbodyWeeklyDetails").append("<tr style='background-color:lightgray'><td style='word-wrap: break-word'></td><td style='word-wrap: break-word'></td><td></td><td></td><td style='font-weight:bold'>Total</td><td style='font-weight:bold'>" + data[i].TotalWorkingHours + "</td><td></td></tr>");
+                        }
+                    }
+                    Resize();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("#confirmationModal").modal("show");
+                    $("#confirmationModalBody").text(xhr.responseText);
+
+                }
+            })
+        HideLoading();
+        }
+
+    function GetWeeklyDetailsFilter() {
+
+       var VendorId = $("#ddlVendor option:selected").val()
+        var CandidateId = $("#ddlCandidate option:selected").val()
+        var MonthId = $("#ddlMonth option:selected").val()
+        var YearId = $("#ddlYear option:selected").val()
+        ShowLoading();
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Dashboard/getweeklyfilterdetails?" + "VendorId=" + VendorId + "&CandidateId=" + CandidateId + "&MonthId=" + MonthId + "&YearId=" + YearId,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                $("#tbodyWeeklyDetails").html("");
+                for (i = 0; i < data.length; i++) {
+                    var StartDate = "";
+                    var EndDate = "";
+                    if (data[i].WeekStartDate != null) {
+                        StartDate = data[i].WeekStartDate.split(" ")[0].split("/")[0] + "-" + data[i].WeekStartDate.split(" ")[0].split("/")[1];
+                    }
+                    if (data[i].WeekEndDate != null) {
+                        EndDate = data[i].WeekEndDate.split(" ")[0].split("/")[0] + "-" + data[i].WeekEndDate.split(" ")[0].split("/")[1]
+                    }
+                    if (data[i].FileName != null && data[i].FileName != "Total" ) {
+                        $("#tbodyWeeklyDetails").append("<tr><td style='word-wrap: break-word'>" + data[i].Name + "</td><td style='word-wrap: break-word'>" + data[i].VendorName + "</td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 1 + ")'>" + data[i].ClientHoliday + "</a></td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 2 + ")'>" + data[i].PTOTaken + "</a></td><td>" + StartDate + " - " + EndDate + "</td><td>" + data[i].TotalWorkingHours + "</td><td><a class='fa'  target='_blank' style='font-size:24px;'  href='https://smtimesheet.blob.core.windows.net/timesheet/" + data[i].FileName + "'> " + "&#xf1c1;" + "</a></td></tr>");
+                    }
+                   
+                    else if (data[i].FileName != "Total") {
+                        $("#tbodyWeeklyDetails").append("<tr><td style='word-wrap: break-word'>" + data[i].Name + "</td><td style='word-wrap: break-word'>" + data[i].VendorName + "</td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 1 + ")'>" + data[i].ClientHoliday + "</a></td><td><a href='#' onclick='return checkPTO(" + data[i].CandId + "," + 2 + ")'>" + data[i].PTOTaken + "</a></td><td>" + StartDate + " - " + EndDate + "</td><td>" + data[i].TotalWorkingHours + "</td><td></td></tr>");
+
+                    }
+                    else if (data[i].FileName == "Total") {
+                        $("#tbodyWeeklyDetails").append("<tr style='background-color:lightgray'><td style='word-wrap: break-word'></td><td style='word-wrap: break-word'></td><td></td><td></td><td style='font-weight:bold'>Total</td><td style='font-weight:bold'>" + data[i].TotalWorkingHours + "</td><td></td></tr>");
+                    }
+                }
+                Resize();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+        HideLoading();
+    }
+
+    function Resize() {
+        function groupTable($rows, startIndex, total) {
+            if (total === 0) {
+                return;
+            }
+            var i, currentIndex = startIndex, count = 1, lst = [];
+            var tds = $rows.find('td:eq(' + currentIndex + ')');
+            var ctrl = $(tds[0]);
+            lst.push($rows[0]);
+            for (i = 1; i <= tds.length; i++) {
+                if (ctrl.text() == $(tds[i]).text()) {
+                    count++;
+                    $(tds[i]).addClass('deleted');
+                    lst.push($rows[i]);
+                }
+                else {
+                    if (count > 1) {
+                        ctrl.attr('rowspan', count);
+                        groupTable($(lst), startIndex + 1, total - 1)
+                    }
+                    count = 1;
+                    lst = [];
+                    ctrl = $(tds[i]);
+                    lst.push($rows[i]);
+                }
+            }
+        }
+        groupTable($('#datatable tr:has(td)'), 0, 5);
+        $('#datatable .deleted').remove();
+    }
+    function GetVendor() {
+        $.ajax({
+            type: "GET",
+            url: Url + "api/vendor/getvendor",
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                $("#ddlVendor").empty();
+                $("#ddlVendor").append($("<option></option>").val(0).html("Vendor Name"));
+
+                $.each(data, function (key, value) {
+                    $("#ddlVendor").append($("<option></option>").val(value.VendorId).html(value.VendorName));
+                });
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+    function GetCandidate() {
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Candidate/getcandidateDetails",
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                $("#ddlCandidate").empty();
+                $("#ddlCandidate").append($("<option></option>").val(0).html("Name"));
+
+                $.each(data, function (key, value) {
+                    $("#ddlCandidate").append($("<option></option>").val(value.CanId).html(value.Name));
+                });
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+        $('#datatable th').resizable();
+    }
+   
+    function checkPTO(CandId, TypeId) {
+        var popup = document.getElementById("popup");
+        popup.classList.remove("hidden");
+        setTimeout(() => popup.classList.add("fade-in"));
+        var MonthId = $("#ddlMonth option:selected").val()
+        var YearId = $("#ddlYear option:selected").val()
+
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Dashboard/getLeavesbifurcation?" + "TypeId=" + TypeId + "&CandId=" + CandId + "&MonthId=" + MonthId + "&YearId=" + YearId,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                $("#tbodyClientHolidayDetails").html("");
+                $("#tbodyPTOLeavesDetails").html("");
+                
+                for (i = 0; i < data.length; i++) {
+                    if (TypeId == 1) {
+
+                        $("#tblPTO").hide();
+                        $("#tblClient").show();
+                        $("#tbodyClientHolidayDetails").append("<tr><td>" + data[i].Id + "</td><td>" + data[i].ClientHolidayHours + "</td><td>" + data[i].ClientHolidayComment + "</td></tr>");
+
+                    }
+                    else {
+                        $("#tblPTO").show();
+                        $("#tblClient").hide();
+                        $("#tbodyPTOLeavesDetails").append("<tr><td>" + data[i].Id + "</td><td>" + data[i].Hours + "</td><td>" + data[i].PTOType + "</td><td>" + data[i].PTOComment + "</td></tr>");
+
+                    }
+
+                }
+
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+
+    }
+    function closePopUp() {
+        var popup = document.getElementById("popup");
+
+        popup.classList.remove("fade-in");
+        setTimeout(() => popup.classList.add("hidden"), 30);
+    }
+ 
+</script>
+<br />
+<br />
+<div id="divloader" class="loader" style="z-index:9999">
+    <div class="row">
+        <div class="col-lg-2 col-md-2 col-sm-2"></div>
+        <div class="col-lg-8 col-md-8 col-sm-8 text-center">
+
+            <div class="loader-main"></div>
+        </div>
+        <div class="col-lg-2 col-md-2 col-sm-2"></div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="card" style="margin-top:50px;">
+            <div class="card-header">
+                <h4 class="card-title" style="text-align:center">Candidate Details</h4>
+                <select style="height:30px;" name="ddlYear" id="ddlYear"></select> &nbsp;&nbsp;&nbsp;
+                <select id='ddlMonth' style="height:30px;">
+                    <option value=''>--Select Month--</option>
+                    <option value='1'>Janaury</option>
+                    <option value='2'>February</option>
+                    <option value='3'>March</option>
+                    <option value='4'>April</option>
+                    <option value='5'>May</option>
+                    <option value='6'>June</option>
+                    <option value='7'>July</option>
+                    <option value='8'>August</option>
+                    <option value='9'>September</option>
+                    <option value='10'>October</option>
+                    <option value='11'>November</option>
+                    <option value='12'>December</option>
+                </select>
+                <button class="btn btn-default" id="btnrefresh">Refresh</button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive" >
+                    <table class="table" id="datatable">
+                        <thead class=" text-primary" style="font-size: 12px;">
+                        <th style="width: 7%;">
+                            <select style="border: none;width: 81%;" id="ddlCandidate">
+                                <option value="0" class="dropdown-item" selected>Name</option>
+                            </select>
+                        </th>
+                        <th style="width: 13%;">
+                            <select style="border: none;width: 100%;" id="ddlVendor">
+                                <option value="0" selected>Vendor Name</option>
+                            </select>
+                        </th>
+                        <th>
+                            Client Holiday
+                        </th>
+                        <th>
+                            Leaves
+                        </th>
+                        <th>
+                            Week ending
+                        </th>
+
+                        <th>
+                            Working Hours
+                        </th>
+                        <th>
+                            View Timesheet
+                        </th>
+                        </thead>
+                        <tbody id="tbodyWeeklyDetails">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+<div id="popup" class="hidden">
+    <table border="1" class="table table-responsive" style="display:none" id="tblPTO">
+        <thead>
+        <th>PTO Taken</th>
+        <th>Hours</th>
+        <th>Type</th>
+        <th>Comment</th>
+        </thead>
+        <tbody id="tbodyPTOLeavesDetails">
+        </tbody>
+    </table>
+    <table border="1" class="table table-responsive" style="display:none" id="tblClient">
+        <thead>
+        <th>Client Holiday</th>
+        <th>Hours</th>
+        <th>Comment</th>
+        </thead>
+        <tbody id="tbodyClientHolidayDetails">
+        </tbody>
+    </table>
+    <hr />
+    <button class="btn btn-default" onclick="closePopUp()">Cancel</button>
+</div>
+
+
+

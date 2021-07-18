@@ -1,0 +1,213 @@
+﻿@{
+    Layout = "";
+}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Track candidate</title>
+
+    <!-- Core plugin JavaScript-->
+    <!-- Bootstrap core JavaScript-->
+    <link href="~/Content/TrackCandidate.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <!-- BS JavaScript -->
+    <script src="~/Scripts/bootstrap.min.js"></script>
+    <script src="~/Scripts/bootstrap.bundle.min.js"></script>
+
+    <script type="text/javascript">
+         var Url = "@System.Configuration.ConfigurationManager.AppSettings["Url"]";
+        /*---------------------------------------------------
+         * document ready function
+         * ---------------------------------------------------*/
+        $(document).ready(function () {
+            Click();
+            
+        });
+        function ShowLoading() {
+            $("#overlay").show();
+            $("#divloader").fadeIn(100);
+        }
+
+        function HideLoading() {
+            $("#overlay").hide();
+            $("#divloader").fadeOut(200);
+        }
+        /*-----------------------------------------------------
+         * click function
+         * ----------------------------------------------------*/
+        function Click() {
+            $("#btnLogin").click(function () {
+
+                if ($("#txtUserName").val() != "" || $("#txtPassword").val() != "") {
+
+                    if ($("#txtUserName").val() != "") {
+
+                        if ($("#txtPassword").val() != "") {
+                            if ($("#txtUserName").val() == "admin" || $("#txtPassword").val() == "Password2020") {
+                                sessionStorage.setItem("UserName", $("#txtUserName").val())
+                                var baseUrl = "@Url.Action("Index","Home")";
+                                window.location.href = baseUrl;
+                            }
+                            else if (($("#txtUserName").val() == "steve.burdick@softwaremerchant.com" || $("#txtPassword").val() == "Password2020")) {
+                                sessionStorage.setItem("UserName", $("#txtUserName").val())
+                                var baseUrl = "@Url.Action("Index","Home")";
+                                window.location.href = baseUrl;
+                            }
+                            else {
+                                $("#confirmationModal").modal("show");
+                                $("#confirmationModalBody").text("Please check username and password");
+                            }
+                            //   Login();
+                        }
+                        else {
+                            $("#confirmationModal").modal("show");
+                            $("#confirmationModalBody").text("Please enter password");
+                        }
+                    }
+                    else {
+                        $("#confirmationModal").modal("show");
+                        $("#confirmationModalBody").text("Please enter user name");
+                    }
+                }
+                else {
+                    $("#confirmationModal").modal("show");
+                    $("#confirmationModalBody").text("Please enter user name and password");
+                }
+
+            });
+        }
+        /*-----------------------------------------------------
+         * Login function
+         * --------------------------------------------------*/
+        function Login() {
+            ShowLoading();
+            var LoginData = LoginParameter();
+             $.ajax({
+                type: "POST",
+                url: Url+"api/user/UserAuthentication",
+                dataType: "json",
+                data: LoginData,
+                contentType: "application/json; charset-utf-8",
+                 success: function (data, textStatus, jqXHR) {
+
+                     if (data.UserId == -1 || data.UserId == -2) {
+
+                         $("#confirmationModal").modal("show");
+                         $("#confirmationModalBody").text(data.Result);
+                         HideLoading();
+                     }
+                     else {
+                         sessionStorage.setItem("UserName", $("#txtUserName").val());
+                         sessionStorage.setItem("UserId", data.UserId);
+                         var baseUrl = "@Url.Action("index","Home")";
+                         window.location.href = baseUrl;
+                         HideLoading();
+                     }
+                 },
+                 error: function (xhr, ajaxOptions, thrownError) {
+
+                     $("#confirmationModal").modal("show");
+                     $("#confirmationModalBody").text(xhr.responseText);
+
+                 }
+             })
+
+        }
+        function LoginParameter() {
+        return "{'UserName':'" + $("#txtUserName").val() + "','Password':'" + $("#txtPassword").val() + "'}";
+        }
+
+
+    </script>
+
+</head>
+
+
+<body class="bg-gradient-primary">
+    <div id="dialog-confirm" title="Error">
+    </div>
+    <div id="divloader" class="loader" style="z-index:9999">
+        <div class="row">
+            <div class="col-lg-2 col-md-2 col-sm-2"></div>
+            <div class="col-lg-8 col-md-8 col-sm-8 text-center">
+
+                <div class="loader-main"></div>
+            </div>
+            <div class="col-lg-2 col-md-2 col-sm-2"></div>
+        </div>
+    </div>
+
+    <!--Confirmation Modal HTML -->
+    <div id="confirmationModal" class="modal fade" style="z-index: 9000; ">
+        <div class="modal-dialog modal-confirm">
+            <div class="modal-content" style="border: groove;">
+                <div class="modal-header">
+                    <h4 class="modal-title" style="color: #f15e5e;font-weight: bold">XPower</h4>
+                    @*<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>*@
+                </div>
+                <div class="modal-body">
+                    <p id="confirmationModalBody" style="color: black;font-size: 17px;font-weight: 600;"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-info" data-dismiss="modal" style="margin-right:34%;">Ok</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--Big blue-->
+    <div class="container">
+        <!-- Outer Row -->
+        <div class="row justify-content-center">
+            <div class="col-xl-10 col-lg-12 " style="text-align:-webkit-center">
+                <div class="card o-hidden border-0 shadow-lg my-5" style="width:400px;">
+                    <div class="card-body p-0">
+                        <!-- Nested Row within Card Body -->
+                        <div class="row">
+
+                            <div class="col-lg-12">
+                                <div class="p-5">
+                                    <div class="text-center">
+                                        <h1 class="h4 text-gray-900 mb-4">Welcome Back!</h1>
+                                    </div>
+                                    <form class="user" id="user-form">
+                                        <div class="form-group">
+                                            <input type="text" class="form-control form-control-user" id="txtUserName" placeholder="Enter User Name...">
+                                        </div>
+                                        <div class="form-group">
+                                            <input type="password" class="form-control form-control-user" id="txtPassword" placeholder="Password">
+                                        </div>
+                                        <div class="form-group">
+                                            <div class="custom-control custom-checkbox small">
+                                                <input type="checkbox" class="custom-control-input" id="customCheck">
+                                                <label class="custom-control-label" for="customCheck" style="color:#00539b">Remember Me</label>
+                                            </div>
+                                        </div>
+                                        <a class="btn btnLogin btn-user btn-block" id="btnLogin">
+                                            Login
+                                        </a>
+                                    </form>
+                                    <hr>
+
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+                <div style="color:white;">
+                    <p>Copyright &copy; 2019-2020 Software Merchant Inc.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

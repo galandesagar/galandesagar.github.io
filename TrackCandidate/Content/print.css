@@ -1,0 +1,11 @@
+﻿@media print {
+    title {
+        font-size: 25px !important
+    }
+    #header {
+        display: table-header-group;
+        background-image: url('../images/red_icon.png');
+    }
+}
+
+

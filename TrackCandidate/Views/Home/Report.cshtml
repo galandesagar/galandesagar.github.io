@@ -1,0 +1,550 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track Candidate</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<!-- BS JavaScript -->
+<script src="~/Scripts/bootstrap.min.js"></script>
+<script src="~/Scripts/bootstrap.bundle.min.js"></script>
+<script src="~/Scripts/jQuery.print.js"></script>
+
+<style type="text/css">
+
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1040;
+        width: 100vw;
+        height: 100vh;
+        background: none !important;
+    }
+
+    .header {
+        position: fixed;
+        top: 0;
+    }
+
+    .footer {
+        position: fixed;
+        bottom: 0;
+    }
+
+    .header, .header-space,
+    .footer, .footer-space {
+        height: 100px;
+    }
+
+    .page-header, .page-header-space {
+        height: 100px;
+    }
+
+    .page-footer, .page-footer-space {
+        height: 50px;
+    }
+
+    .page-footer {
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        border-top: 1px solid black; /* for demo */
+        background: yellow; /* for demo */
+    }
+
+    .page-header {
+        position: fixed;
+        top: 0mm;
+        width: 100%;
+        border-bottom: 1px solid black; /* for demo */
+        background: yellow; /* for demo */
+    }
+
+    .page {
+        page-break-after: always;
+    }
+</style>
+<script type="text/javascript">
+           var Url = "@System.Configuration.ConfigurationManager.AppSettings["Url"]";
+        /*---------------------------------------------------
+         * document ready function
+         * ---------------------------------------------------*/
+        $(document).ready(function () {
+            if (sessionStorage.getItem("UserName") == null) {
+                var baseUrl = "@Url.Action("Login","Home")";
+                window.location.href = baseUrl;
+            }
+            if (sessionStorage.getItem("SubmenusSelect") == true) {
+                $("#collapseTwo").removeClass('show');
+            }
+            else {
+                $("#collapseTwo").addClass("show");
+            }
+            var month = (new Date()).getMonth();
+            $('#ddlMonth').val(month + 1).attr("selected", "selected");
+
+            $('#btnrefresh').click(function () {
+                GetWeeklyDetails();
+            });
+
+
+            $("#ddlMonth").change(function () {
+                GetWeeklyDetails();
+
+            });
+            $("#ddlYear").change(function () {
+                GetWeeklyDetails();
+
+            });
+            for (i = new Date().getFullYear(); i > 2018; i--) {
+                $('#ddlYear').append($('<option />').val(i).html(i));
+            }
+            GetWeeklyDetails();
+            $('#btnCancel').click(function () {
+                $("#CalculationModal").modal('hide');
+            });
+        });
+        function ShowLoading() {
+            $("#overlay").show();
+            $("#divloader").fadeIn(100);
+        }
+
+        function HideLoading() {
+            $("#overlay").hide();
+            $("#divloader").fadeOut(200);
+        }
+    function GetWeeklyDetails() {
+        ShowLoading();
+        //var MonthId = $("#ddlMonth option:selected").val()
+        var YearId = $("#ddlYear option:selected").val()
+            $.ajax({
+                type: "GET",
+                url: Url + "api/Dashboard/getLeavesDetails?" + "CandId=" + 0 + "&YearId=" + YearId,
+                dataType: "json",
+                data: "{}",
+                contentType: "application/json; charset-utf-8",
+                success: function (data, textStatus, jqXHR) {
+                    $("#tbodyWeeklyDetails").html("");
+                    for (i = 0; i < data.length; i++) {
+
+                        $("#tbodyWeeklyDetails").append("<tr><td style='word-wrap: break-word;display:none;'>" + data[i].CandId + "</td><td id='Name_" + data[i].CandId + "'>" + data[i].Name + "</td><td>" + data[i].StartDate.split(" ")[0] + "</td><td><a href='#' onclick='Calculation(" + data[i].CandId + ")'>" + data[i].PTOUpToCurrentMonth + "</a></td><td>" + data[i].clientPTO + "</td><td><a href='#' onclick='PaidLeaves(" + data[i].CandId + ")'>" + data[i].paid + "</a></td><td><a href='#' onclick='UnpaidLeaves(" + data[i].CandId +")'>" + data[i].unpaid + "</a></td><td>" + data[i].Leavesavailable + "</td></tr>");
+                    }
+                    Resize();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    $("#confirmationModal").modal("show");
+                    $("#confirmationModalBody").text(xhr.responseText);
+
+                }
+            })
+        HideLoading();
+        }
+
+
+    function Resize() {
+        function groupTable($rows, startIndex, total) {
+            if (total === 0) {
+                return;
+            }
+            var i, currentIndex = startIndex, count = 1, lst = [];
+            var tds = $rows.find('td:eq(' + currentIndex + ')');
+            var ctrl = $(tds[0]);
+            lst.push($rows[0]);
+            for (i = 1; i <= tds.length; i++) {
+                if (ctrl.text() == $(tds[i]).text()) {
+                    count++;
+                    $(tds[i]).addClass('deleted');
+                    lst.push($rows[i]);
+                }
+                else {
+                    if (count > 1) {
+                        ctrl.attr('rowspan', count);
+                        groupTable($(lst), startIndex + 1, total - 1)
+                    }
+                    count = 1;
+                    lst = [];
+                    ctrl = $(tds[i]);
+                    lst.push($rows[i]);
+                }
+            }
+        }
+        groupTable($('#datatable tr:has(td)'), 0, 5);
+        $('#datatable .deleted').remove();
+    }
+
+    function Calculation(CandId) {
+        $("#CalculationModal").modal('show');
+        var YearId = $("#ddlYear option:selected").val()
+        $("#lblYear").text(YearId);
+        $("#lblName").text($("#Name_" + CandId).text());
+
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Dashboard/getLeavesCalculation?" + "CandId=" + CandId + "&YearId=" + YearId,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                $("#tbodyCalculation").html("");
+                var Sum = 0;
+                for (i = 0; i < data.length; i++) {
+                    Sum = Sum + data[i].Calculation
+                    $("#tbodyCalculation").append("<tr><td >" + data[i].MonthId + "</td><td >" + data[i].MonthName + "</td><td >" + data[i].Calculation.toFixed(3) + "</td><td>" + Sum.toFixed(3) + "</td></tr>");
+                }
+                $("#tbodyCalculation").append("<tr><td ></td><td ></td><td ></td><td></td></tr>");
+
+                $("#tbodyCalculation").append("<tr><td ></td><td ></td><td >Total</td><td>" + Sum.toFixed(3) + "</td></tr>");
+
+                Resize();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+    function PrintReport() {
+        var YearId = $("#ddlYear option:selected").val()
+
+        var divToPrint = document.getElementById('datatable');
+        var htmlToPrint = '' +
+            '<style type="text/css">' +
+            'table th, table td {' +
+            'border:1px solid #000;' +
+            'padding:0.5em;' +
+            '}' +
+            '</style>';
+        htmlToPrint += divToPrint.outerHTML;
+        newWin = window.open("");
+        newWin.document.write('<div class="page-header"><span><img src="https://trackcandidate20201224010357.azurewebsites.net/Content/images/SM-logo.png"/></span><span style="float:right">487 Devon Park Drive, Suite 215 <br>Wayne, PA 19087</span><div>');
+        newWin.document.write('<hr>');
+        newWin.document.write('<div style="font-weight:bold;text-align:center">Year:- '+YearId+'</div><br><br>');
+
+        newWin.document.write(htmlToPrint);
+        //newWin.document.write('</div><div class="page-footer-space"></div>');
+        //newWin.document.write('<div class="page-footer" style="text-align: -webkit-center;bottom:0;position: fixed; padding-left:50px;"><hr><span>487 Devon Park Drive, Suite 215, Wayne PA 19087 <br>Tel: 610 - 213 - 0673 | Fax: 610 - 482 - 4402 | <a>web site: http://www.softwaremerchant.com<a></span>');
+        //newWin.document.write('</div>');
+        setTimeout(function () {
+            newWin.print();
+            newWin.close();
+        }, 2000);
+    }
+    function PrintCalculation() {
+        var divToPrint = document.getElementById('calculationdatatable');
+        var htmlToPrint = ''+
+            '<style type="text/css">' +
+            'table th, table td {' +
+            'border:1px solid #000;' +
+            'padding:0.5em;' +
+            '}' +
+            '</style>';
+
+        htmlToPrint += divToPrint.outerHTML;
+        newWin = window.open("");
+        newWin.document.write('<div class="page-header"><span><img src="https://trackcandidate20201224010357.azurewebsites.net/Content/images/SM-logo.png"/></span><span style="float:right">487 Devon Park Drive, Suite 215 <br>Wayne, PA 19087</span><div>');
+        newWin.document.write('<hr>');
+
+        newWin.document.write('<div style="text-align: -webkit-center;">');
+
+        newWin.document.write(htmlToPrint);
+        newWin.document.write('</div><div class="page-footer-space"></div>');
+        newWin.document.write('<div class="page-footer" style="text-align: -webkit-center;bottom:0;position: fixed; padding-left:50px;"><hr><span>487 Devon Park Drive, Suite 215, Wayne PA 19087 <br>Tel: 610 - 213 - 0673 | Fax: 610 - 482 - 4402 | <a>web site: http://www.softwaremerchant.com<a></span>');
+
+        newWin.document.write('</div>');
+
+        setTimeout(function () {
+            newWin.print();
+            newWin.close();
+        }, 1000);
+
+    }
+
+    function PaidLeaves(CandId) {
+        $("#PaidModal").modal('show');
+        var YearId = $("#ddlYear option:selected").val()
+        $("#lblPaidYear").text(YearId);
+        $("#lblPaidName").text($("#Name_" + CandId).text());
+
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Dashboard/getLeavesbifurcation?" + "TypeId=" + 2 + "&CandId=" + CandId + "&MonthId=" + 0 + "&YearId=" + YearId,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                $("#tbodyPaid").html("");
+                var Sum = 0;
+                for (i = 0; i < data.length; i++) {
+                    if (data[i].PTOType == "Paid") {
+                        Sum = Sum + data[i].Hours
+                        $("#tbodyPaid").append("<tr><td >" + data[i].Id + "</td><td >" + data[i].Hours + "</td><td >" + data[i].PTOComment + "</td><td>" + Sum + "</td></tr>");
+                    }
+                }
+                $("#tbodyPaid").append("<tr><td ></td><td ></td><td ></td><td></td></tr>");
+
+                $("#tbodyPaid").append("<tr><td ></td><td ></td><td >Total Days</td><td>" + Sum.toFixed(3)/8.00 + "</td></tr>");
+
+                Resize();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+
+    function UnpaidLeaves(CandId) {
+        $("#UnpaidModal").modal('show');
+        var YearId = $("#ddlYear option:selected").val()
+        $("#lblUnpaidYear").text(YearId);
+        $("#lblUnpaidName").text($("#Name_" + CandId).text());
+
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Dashboard/getLeavesbifurcation?" + "TypeId=" + 2 + "&CandId=" + CandId + "&MonthId=" + 0 + "&YearId=" + YearId,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                $("#tbodyUnpaid").html("");
+                var Sum = 0;
+                for (i = 0; i < data.length; i++) {
+                    if (data[i].PTOType == "Unpaid") {
+                        Sum = Sum + data[i].Hours
+                        $("#tbodyUnpaid").append("<tr><td >" + data[i].Id + "</td><td >" + data[i].Hours + "</td><td >" + data[i].PTOComment + "</td><td>" + Sum + "</td></tr>");
+                    }
+                }
+                $("#tbodyUnpaid").append("<tr><td ></td><td ></td><td ></td><td></td></tr>");
+
+                $("#tbodyUnpaid").append("<tr><td ></td><td ></td><td >Total Days</td><td>" + Sum.toFixed(3) / 8.00 + "</td></tr>");
+
+                Resize();
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+
+
+</script>
+<br />
+<br />
+<div class="row">
+    <div class="col-md-12">
+        <div class="card" style="margin-top:50px;">
+            <div class="card-header">
+                <h4 class="card-title" style="text-align:center">Candidate Details</h4>
+                <select style="height:30px;" name="ddlYear" id="ddlYear"></select> &nbsp;&nbsp;&nbsp;
+                <button class="btn btn-default" id="btnrefresh">Refresh</button>
+                <button type="button" class="btn btn-default" id="btnPrint" onclick="PrintReport()">Print</button>
+
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="datatable">
+                        <thead class=" text-primary" style="font-size: 12px;">
+                        <th style="width: 7%; display:none">
+                            Candidate Id
+                        </th>
+                        <th style="width: 13%;">
+                            Name
+                        </th>
+                        <th style="width: 13%;">
+                            Start Date
+                        </th>
+
+                        <th>
+                            Total PTO
+                        </th>
+                        <th>
+                            Client Holiday
+                        </th>
+                        <th>
+                            Paid Time off
+                        </th>
+                        <th>
+                            Unpaid Time off
+                        </th>
+                        <th>
+                            PTO Reamaining
+                        </th>
+                        </thead>
+                        <tbody id="tbodyWeeklyDetails">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="CalculationModal" class="modal" style="z-index: 9000;">
+    <div class="modal-dialog modal-confirm">
+        <div class="modal-content" style="border: groove;">
+            <div class="modal-header">
+                <h4 class="modal-title" style="color: #f15e5e;font-weight: bold;margin-top:1px;">
+                    Leaves Calculation
+                </h4>
+            </div>
+            <div class="modal-body" style="color: black;font-size: initial;font-weight: inherit;" id="calculationdatatable">
+                <div class="row">
+                    <div class="col-md-1"></div>
+                    <div class="col-md-10">Name:- <label id="lblName"></label>&nbsp;&nbsp; Year:- <label id="lblYear"></label></div>
+
+                    <div class="col-md-5"></div>
+
+                </div>
+                <br />
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead class=" text-primary" style="font-size: 12px;">
+                        <th>
+                            No.
+                        </th>
+                        <th>
+                            Month
+                        </th>
+                        <th>
+                            Per Month
+                        </th>
+                        <th>
+                            Accrued
+                        </th>
+
+                        </thead>
+                        <tbody id="tbodyCalculation">
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </div>
+            <div class="modal-footer text-center">
+                <button type="button" class="btn btn-default" id="btnPrint" onclick="PrintCalculation()">Print</button>
+
+                <button type="button" class="btn btn-danger" data-dismiss="modal" id="btnCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="PaidModal" class="modal" style="z-index: 9000;">
+    <div class="modal-dialog modal-confirm">
+        <div class="modal-content" style="border: groove;">
+            <div class="modal-header">
+                <h4 class="modal-title" style="color: #f15e5e;font-weight: bold;margin-top:1px;">
+                    Paid Leaves
+                </h4>
+            </div>
+            <div class="modal-body" style="color: black;font-size: initial;font-weight: inherit;" id="Paiddatatable">
+                <div class="row">
+                    <div class="col-md-1"></div>
+                    <div class="col-md-10">Name:- <label id="lblPaidName"></label>&nbsp;&nbsp; Year:- <label id="lblPaidYear"></label></div>
+
+                    <div class="col-md-5"></div>
+
+                </div>
+                <br />
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead class=" text-primary" style="font-size: 12px;">
+                        <th>
+                            No.
+                        </th>
+                        <th>
+                            Hours
+                        </th>
+                        <th>
+                            Comment
+                        </th>
+                        <th>
+                            Total Hours
+                        </th>
+                        </thead>
+                        <tbody id="tbodyPaid">
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </div>
+            <div class="modal-footer text-center">
+                @*<button type="button" class="btn btn-default" id="btnPrint" onclick="PrintPaid()">Print</button>*@
+
+                <button type="button" class="btn btn-danger" data-dismiss="modal" id="btnCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="UnpaidModal" class="modal" style="z-index: 9000;">
+    <div class="modal-dialog modal-confirm">
+        <div class="modal-content" style="border: groove;">
+            <div class="modal-header">
+                <h4 class="modal-title" style="color: #f15e5e;font-weight: bold;margin-top:1px;">
+                    Unpaid Leaves
+                </h4>
+            </div>
+            <div class="modal-body" style="color: black;font-size: initial;font-weight: inherit;" id="Unpaiddatatable">
+                <div class="row">
+                    <div class="col-md-1"></div>
+                    <div class="col-md-10">Name:- <label id="lblUnpaidName"></label>&nbsp;&nbsp; Year:- <label id="lblUnpaidYear"></label></div>
+
+                    <div class="col-md-5"></div>
+
+                </div>
+                <br />
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead class=" text-primary" style="font-size: 12px;">
+                        <th>
+                            No.
+                        </th>
+                        <th>
+                            Hours
+                        </th>
+                        <th>
+                            Comment
+                        </th>
+                        <th>
+                            Total Hours
+                        </th>
+                        </thead>
+                        <tbody id="tbodyUnpaid">
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </div>
+            <div class="modal-footer text-center">
+                @*<button type="button" class="btn btn-default" id="btnPrint" onclick="PrintPaid()">Print</button>*@
+
+                <button type="button" class="btn btn-danger" data-dismiss="modal" id="btnCancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="divloader" class="loader" style="z-index:9999">
+    <div class="row">
+        <div class="col-lg-2 col-md-2 col-sm-2"></div>
+        <div class="col-lg-8 col-md-8 col-sm-8 text-center">
+
+            <div class="loader-main"></div>
+        </div>
+        <div class="col-lg-2 col-md-2 col-sm-2"></div>
+    </div>
+</div>
+
+
+
+

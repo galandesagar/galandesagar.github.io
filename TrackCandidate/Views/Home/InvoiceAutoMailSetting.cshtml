@@ -1,0 +1,337 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+
+<!DOCTYPE html>
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track Candidate</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<!-- BS JavaScript -->
+<script src="~/Scripts/bootstrap.min.js"></script>
+<script src="~/Scripts/bootstrap.bundle.min.js"></script>
+<script src="~/Scripts/dayjs.min.js"></script>
+<style type="text/css">
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1040;
+        width: 100vw;
+        height: 100vh;
+        background: none !important;
+    }
+
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-text-size-adjust: 100% !important;
+        -ms-text-size-adjust: 100% !important;
+        -webkit-font-smoothing: antialiased !important; /*style only recognised by some browsers*/
+    }
+
+    img {
+        border: 0 !important;
+        outline: none !important;
+    }
+
+    p {
+        Margin: 0px !important; /*Old versions of Outlook ignore margin if it is lower case as usual*/
+        padding: 0px !important;
+    }
+
+    blockquote {
+        background: #eee;
+        border-radius: 5px;
+        margin: 16px 0;
+    }
+</style>
+
+<script type="text/javascript">
+var Url = "@System.Configuration.ConfigurationManager.AppSettings["Url"]";
+    /*---------------------------------------------------
+     * document ready function
+     * ---------------------------------------------------*/
+
+    $(document).ready(function () {
+        if (sessionStorage.getItem("UserName") == null) {
+            var baseUrl = "@Url.Action("Login","Home")";
+            window.location.href = baseUrl;
+        }
+
+        for (var i = 0; i <= 50; i++) {
+            $('#ddlreminder1,#ddlreminder2').append($('<option />').val(i).html(i));
+        }
+        $("#ddlreminder1,#ddlreminder2").change(function () {
+            var tagId = this.id
+            var Id = tagId.charAt(tagId.length - 1);
+            AddSetting(Id, $("#lbl" + Id + "").text(), this.value);
+        });
+
+        $("#ddlTimesheetreminder1,#ddlTimesheetreminder2").change(function () {
+            var tagId = this.id
+            var Id = tagId.charAt(tagId.length - 1);
+            AddTimesheetSetting(Id, $("#lbl" + Id + "").text(), this.value);
+        });
+        $('#btnAddSetting').click(function () {
+            $("#AddSettingModal").modal("show")
+        });
+        $('#btnAdd').click(function () {
+            AddSetting();
+        });
+       GetInvioceAutoMailSetting();
+       GetTimeSheetAutoMailReminderSetting();
+
+    });
+
+    function ShowLoading() {
+        $("#overlay").show();
+        $("#divloader").fadeIn(100);
+    }
+
+    function HideLoading() {
+        $("#overlay").hide();
+        $("#divloader").fadeOut(200);
+    }
+
+    function AddSetting(Id, Reminder, NoOfDay) {
+        $.ajax({
+            type: "POST",
+            url: Url + "api/invoice/SaveInvoiceAutoMailSetting?" + "Id=" + Id + "&Reminder=" + Reminder + "&NoOfDays=" + NoOfDay,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+
+    function AddTimesheetSetting(Id, Reminder, NoOfDay) {
+        $.ajax({
+            type: "POST",
+            url: Url + "api/Timesheet/SaveInvoiceAutoMailSetting?" + "Id=" + Id + "&Reminder=" + Reminder + "&NoOfDays=" + NoOfDay,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+    function GetInvioceAutoMailSetting() {
+        $.ajax({
+            type: "GET",
+            url: Url + "api/invoice/getInvoiceAutoMailSetting",
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                for (i = 0; i < data.length; i++) {
+                    $("#ddlreminder" + data[i].Id + "").val(data[i].NoOfDay)
+                }
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+
+    }
+
+    function GetTimeSheetAutoMailReminderSetting() {
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Timesheet/GetTimeSheetAutoMailReminderSetting",
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                for (i = 0; i < data.length; i++) {
+                    $("#ddlTimesheetreminder" + data[i].Id + "").val(data[i].NoOfDay)
+                }
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+            }
+        })
+
+    }
+
+    function SaveWeekEndingDates() {
+        $.ajax({
+            type: "POST",
+            url: Url + "api/Timesheet/AddWeekdate?" + "MonthId=" + $("#ddlMonth").val(),
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                alert("Successfully")
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+</script>
+
+<div id="divloader" class="loader" style="z-index:9999">
+    <div class="row">
+        <div class="col-lg-2 col-md-2 col-sm-2"></div>
+        <div class="col-lg-8 col-md-8 col-sm-8 text-center">
+
+            <div class="loader-main"></div>
+        </div>
+        <div class="col-lg-2 col-md-2 col-sm-2"></div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card" style="margin-top:100px;">
+           
+            <div class="card-body">
+                <h4 class="card-title text-center">Invoice Auto Mail setting</h4>
+
+                <div class="table-responsive">
+                    <table class="table" style="width:35%">
+                        <thead class="text-primary">
+
+                        <th>
+                            Reminder
+                        </th>
+                        <th>
+                            No Of Days
+                        </th>
+
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <label id="lbl1" style="color:black;font-size:15px;">1st</label>
+                                </td>
+                                <td>
+                                    <select id="ddlreminder1" class="ddl">
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label id="lbl2" style="color:black;font-size:15px;">2nd</label>
+                                </td>
+                                <td>
+                                    <select id="ddlreminder2" class="ddl">
+                                    </select>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h4 class="card-title text-center">Timesheet Auto Mail setting</h4>
+
+                <table class="table" style="width:35%">
+                    <thead class="text-primary">
+
+                    <th>
+                        Reminder
+                    </th>
+                    <th>
+                        No Of Days
+                    </th>
+
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>
+                                <label id="lbl1" style="color:black;font-size:15px;">1st</label>
+                            </td>
+                            <td>
+                                <select id="ddlTimesheetreminder1" class="ddl">
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                    <option value="4">Thursday</option>
+                                    <option value="5">Friday</option>
+                                    <option value="6">Saturday</option>
+                                    <option value="7">Sunday</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                <label id="lbl2" style="color:black;font-size:15px;">2nd</label>
+                            </td>
+                            <td>
+                                <select id="ddlTimesheetreminder2" class="ddl">
+                                    <option value="1">Monday</option>
+                                    <option value="2">Tuesday</option>
+                                    <option value="3">Wednesday</option>
+                                    <option value="4">Thursday</option>
+                                    <option value="5">Friday</option>
+                                    <option value="6">Saturday</option>
+                                    <option value="7">Sunday</option>
+                                </select>
+                            </td>
+                        </tr>
+
+                    </tbody>
+                </table>
+
+                <h4 class="card-title text-center">Save Week date</h4>
+                <br />
+                <div class="row">
+
+                    <div class="col-lg-4">
+                        Add Week date
+                    </div>
+
+                    <div class="col-lg-6">
+                        <select id='ddlMonth' style="height:30px;">
+                            <option value='1'>Janaury</option>
+                            <option value='2'>February</option>
+                            <option value='3'>March</option>
+                            <option value='4'>April</option>
+                            <option value='5'>May</option>
+                            <option value='6'>June</option>
+                            <option value='7'>July</option>
+                            <option value='8'>August</option>
+                            <option value='9'>September</option>
+                            <option value='10'>October</option>
+                            <option value='11'>November</option>
+                            <option value='12'>December</option>
+                        </select>
+                    </div>
+
+                    <div class="col-lg-2">
+                        <button class="btn btn-info" onclick="SaveWeekEndingDates()">Save Week dates</button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+

@@ -1,0 +1,273 @@
+﻿@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Track Candidate</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script type="text/ecmascript" src="~/Scripts/jqGrid.js"></script>
+
+<script type="text/ecmascript" src="~/Scripts/grid.locale-en.js"></script>
+<link rel="stylesheet" type="text/css" media="screen" href="~/Content/Jqgrid-jquery-ui.css" />
+<link rel="stylesheet" type="text/css" media="screen" href="~/Content/ui.jqgrid.css" />
+<script type="text/javascript" language="javascript" src="~/Scripts/jszip.min.js"></script>>
+
+@*<script src="~/Scripts/bootstrap.min.js"></script>
+    <script src="~/Scripts/jQuery.print.js"></script>
+    <script src="~/Pivot/deps/react-0.12.2.js"></script>
+    <script src="~/Pivot/dist/orb.js"></script>
+
+    <link href="~/Pivot/dist/orb.css" rel="stylesheet" />*@
+<style type="text/css">
+    .modal-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1040;
+        width: 100vw;
+        height: 100vh;
+        background: none !important;
+    }
+
+    .ui-jqgrid-bdiv {
+        width: auto;
+    }
+
+    .ui-jqgrid-hdiv .ui-state-default .ui-corner-top {
+        width: auto;
+    }
+
+    #gbox_jqGrid {
+        width: auto;
+    }
+    .ui-jqgrid-labels .jqg-third-row-header .jqg-second-row-header{
+        display:none
+    }
+</style>
+<script type="text/javascript">
+           var Url = "@System.Configuration.ConfigurationManager.AppSettings["Url"]";
+        /*---------------------------------------------------
+         * document ready function
+         * ---------------------------------------------------*/
+        $(document).ready(function () {
+            if (sessionStorage.getItem("UserName") == null) {
+                var baseUrl = "@Url.Action("Login","Home")";
+                window.location.href = baseUrl;
+            }
+
+            if (sessionStorage.getItem("SubmenusSelect") == true) {
+                $("#collapseTwo").removeClass('show');
+            }
+            else {
+                $("#collapseTwo").addClass("show");
+            }
+
+            $('#btnrefresh').click(function () {
+                GetInvoiceReport();
+            });
+
+           
+
+            $("#ddlYear").change(function () {
+                GetInvoiceReport();
+
+            });
+            for (i = new Date().getFullYear(); i > 2018; i--) {
+                $('#ddlYear').append($('<option />').val(i).html(i));
+            }
+            GetInvoiceReport();
+            $('#btnCancel').click(function () {
+                $("#CalculationModal").modal('hide');
+            });
+            $("#excel").on("click", function () {
+                $("#jqGrid").jqGrid("exportToExcel", {
+                    includeLabels: true,
+                    includeGroupHeader: true,
+                    includeFooter: true,
+                    fileName: "Invoice Monthly.xlsx",
+                })
+            })
+            $("#excel1").on("click", function () {
+                $("#jqGrid1").jqGrid("exportToExcel", {
+                    includeLabels: true,
+                    includeGroupHeader: true,
+                    includeFooter: true,
+                    fileName: "Invoice Weekly.xlsx",
+                })
+            })
+            
+        });
+        function ShowLoading() {
+            $("#overlay").show();
+            $("#divloader").fadeIn(100);
+        }
+
+        function HideLoading() {
+            $("#overlay").hide();
+            $("#divloader").fadeOut(200);
+        }
+
+    function GetInvoiceReport() {
+       // $("#jqGrid").empty();
+      
+       var InvoiceType = $("#ddlInvoiceType option:selected").val()
+       var YearId = $("#ddlYear option:selected").val()
+        $.ajax({
+            type: "GET",
+            url: Url + "api/Invoice/GetInvoiceReport?" + "YearId=" + YearId + "&InvoiceType=" + InvoiceType,
+            dataType: "json",
+            data: "{}",
+            contentType: "application/json; charset-utf-8",
+            success: function (data, textStatus, jqXHR) {
+                var data = data;
+               
+                if (InvoiceType == 2) {
+                    $("#divmonthly").show();
+                    $("#divweekly").hide();
+                    $("#excel").show();
+                    $("#excel1").hide();
+                    var grid = $("#jqGrid");
+                    grid.empty();
+                    delete grid[0].grid;
+                    $('#gbox_jqGrid').replaceWith(grid);
+                    for (var i = 0; i < data.length; i++) {
+                        data[i].MonthId = data[i].MonthId + "-" + data[i].YearId;
+                    }
+                    $("#jqGrid").jqGrid('jqPivot',
+                        data,
+                        {
+                            xDimension: [
+                                {
+                                    dataName: "MonthId",
+                                    label: "Month"
+                                }
+                            ],
+
+                            aggregates: [{
+                                member: 'InvoiceDate',
+                                aggregator: mySum,
+                              //  width: 150,
+                                label: 'Sum'
+                            }],
+
+                            yDimension: [
+                                { "dataName": "VendorName" },
+                                { "dataName": "Name" }
+
+                            ]
+                        },
+                        {
+                            height: "200",
+                            pager: "#jqGridPager",
+                        });
+                    function mySum(value, fieldName, record) {
+                        return record.InvoiceDate;
+                    }
+                  
+                }
+                else {
+                    $("#divmonthly").hide();
+                    $("#divweekly").show();
+                    $("#excel").hide();
+                    $("#excel1").show();
+                    var grid = $("#jqGrid1");
+                    grid.empty();
+                    delete grid[0].grid;
+                    $('#gbox_jqGrid1').replaceWith(grid);
+                    for (var i = 0; i < data.length; i++) {
+                        var StartDate = data[i].InvoiceWeekStartDate.split('-')
+                        var EndDate = data[i].InvoiceWeekEndDate.split('-')
+
+                        data[i].InvoiceWeekStartDate = StartDate[1] + '-' + StartDate[2] + " - " + EndDate[1] + '-' + EndDate[2];
+                    }
+                    jQuery("#jqGrid1").jqGrid('jqPivot',
+                        data,
+                        {
+                            xDimension: [
+                                {
+                                    dataName: "InvoiceWeekStartDate",
+                                    label: "Invoice Week"
+                                }
+                            ],
+
+                            aggregates: [{
+                                member: 'InvoiceDate',
+                                aggregator: mySum,
+                               // width: 150,
+                                label: 'Sum'
+                            }],
+
+                            yDimension: [
+                                { "dataName": "VendorName" },
+                                { "dataName": "Name" }
+
+                            ]
+                        },
+                        // grid options
+
+                        {
+                            height: "200",
+                            pager: "#jqGridPager1",
+                        });
+
+                    function mySum(value, fieldName, record) {
+                        return record.InvoiceDate;
+                    }
+
+                   
+                }
+
+            },
+            error: function (xhr, ajaxOptions, thrownError) {
+                $("#confirmationModal").modal("show");
+                $("#confirmationModalBody").text(xhr.responseText);
+
+            }
+        })
+    }
+
+
+
+</script>
+<br />
+<br />
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="card" style="margin-top:100px;">
+            <div class="card-header">
+                <h4 class="card-title text-center">Candidate List</h4>
+                <select style="height:30px;" name="ddlYear" id="ddlYear"></select> &nbsp;&nbsp;&nbsp;
+                <select style="height:30px;" name="ddlInvoiceType" id="ddlInvoiceType">
+                    <option value="1">Weekly</option>
+                    <option value="2" selected>Monthly</option>
+                </select> &nbsp;&nbsp;&nbsp;
+
+                <button class="btn btn-default" id="btnrefresh" style="">Refresh</button> &nbsp;&nbsp;&nbsp;
+                <input type="button" id="excel" value="Export Excel" />
+                <input type="button" id="excel1" style="display:none" value="Export Excel" />
+
+            </div>
+            <div class="card-body" style="width:100%;overflow:auto;">
+                <div id="divmonthly">
+
+                    <table id="jqGrid"></table>
+                    <div id="jqGridPager"></div>
+                </div>
+                <div id="divweekly">
+                    <table id="jqGrid1"></table>
+                    <div id="jqGridPager1"></div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+
+
+
+
+
